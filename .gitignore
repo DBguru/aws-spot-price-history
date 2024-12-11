@@ -1,0 +1,4 @@
+.envrc
+*.tsv.zst
+.vscode
+.DS_Store
