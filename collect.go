@@ -129,10 +129,12 @@ func getSpotPrices(ctx context.Context, region string, start time.Time, end time
 		if err != nil {
 			return nil, err
 		}
-		progress := end.Sub(*page.SpotPriceHistory[0].Timestamp).Seconds() / end.Sub(start).Seconds()
-		spotPriceRequestMutex.Lock()
-		spotPriceRequestProgress[SpotPriceRequest{region, start, end}] = progress
-		spotPriceRequestMutex.Unlock()
+		if len(page.SpotPriceHistory) != 0 {
+			progress := end.Sub(*page.SpotPriceHistory[0].Timestamp).Seconds() / end.Sub(start).Seconds()
+			spotPriceRequestMutex.Lock()
+			spotPriceRequestProgress[SpotPriceRequest{region, start, end}] = progress
+			spotPriceRequestMutex.Unlock()
+		}
 		for _, price := range page.SpotPriceHistory {
 			prices = append(prices, SpotPrice{
 				ZoneID: zoneIdMapping[*price.AvailabilityZone],
@@ -144,6 +146,9 @@ func getSpotPrices(ctx context.Context, region string, start time.Time, end time
 			// log.Println(zoneIdMapping[*price.AvailabilityZone], price.InstanceType, price.ProductDescription, *price.SpotPrice, *price.Timestamp)
 		}
 	}
+	spotPriceRequestMutex.Lock()
+	spotPriceRequestProgress[SpotPriceRequest{region, start, end}] = 1
+	spotPriceRequestMutex.Unlock()
 	return prices, nil
 }
 
@@ -372,8 +377,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// months := GetApplicableDateRanges(*version)
-	months := []time.Time{AddMonths(time.Now(), -1)}
+	months := GetApplicableDateRanges(*version)
+	// months := []time.Time{AddMonths(time.Now(), -1)}
 	log.Println(months)
 	latestMonth := AddMonths(time.Now(), -1)
 
@@ -422,7 +427,7 @@ func main() {
 				spotPriceRequestMutex.Lock()
 				if len(spotPriceRequestProgress) != 0 {
 					minProgress := slices.Min(maps.Values(spotPriceRequestProgress))
-					log.Println("progress:", minProgress)
+					log.Printf("Progress: %.1f%%\n", minProgress*100)
 				}
 				spotPriceRequestMutex.Unlock()
 			}

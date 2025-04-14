@@ -10,24 +10,15 @@ jobs:
   Pull-Prices:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    permissions:
-      # Give the default GITHUB_TOKEN write permission to commit and push the
-      # added or changed files to the repository.
-      contents: write
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-go@v5
         with:
-          python-version: '3.10'
-          cache: 'pip' # caching pip dependencies
-      - run: pip install -r requirements.txt
+          go-version: '>=1.24.0'
       - shell: bash
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWSAccessKeyId }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWSSecretAccessKey }}
+          ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
+          ZENODO_RECORD_ID: ${{ secrets.ZENODO_RECORD_ID }}
+          ZENODO_PUBLISH: publish
         run: |
-          python3 collect.py
-      - uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_message: Pull updated spot prices
-          file_pattern: '*.tsv.zst'
+          go run collect.go
